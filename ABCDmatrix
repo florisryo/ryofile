@@ -1,0 +1,133 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Oct 15 13:38:05 2020
+
+@author: flori
+"""
+
+import math
+import numpy as np
+import sympy
+import matplotlib.pyplot as plt
+
+c=5
+thetain=c*math.pi/180    #入射角(rad)
+Rx=1000/math.cos(thetain)       #ミラーの曲率(mm)sagital
+Ry=1000*math.cos(thetain)       #ミラーの曲率(mm)tangential
+d1=6000                   #d1の長さ(mm)
+d2=510                     #d2の長さ(mm)
+t=50                       #利得媒質の厚さ(mm)
+n1=1                       #空気の屈折率
+n2=2.44                    #利得の屈折率
+ramuda=2460*10**(-5)        #波長(nm)
+teff=math.sqrt(n2**2+1)/n2       #利得媒質の長さ(計算上)
+
+Mx=np.array([[1,0],[-2/Rx,1]])                       #ミラーsagital
+My=np.array([[1,0],[-2/Ry,1]])                       #ミラーtangential
+D1=np.array([[1,d1],[0,1]])                          #自由空間
+D2=np.array([[1,d2],[0,1]])                          #自由空間2
+T=np.array([[1,t*math.sqrt(n2**2+1)/n2],[0,1]])          #利得媒質の厚さ    
+Bix=np.array([[1,0],[0,n1/n2]])                      #境界in_sagital
+Box=np.array([[1,0],[0,n2/n1]])                      #境界out_sagital
+Biy=np.array([[n2,0],[0,(n1/n2)**2]])                  #境界in_tangential
+Boy=np.array([[1/n2,0],[0,(n2/n1)**2]])               #境界out_tangential
+w = list()
+p= list()
+
+
+#sagital方向の基準
+X = D1@Mx@D2@Box@T@Bix@D2@Mx@D1@D1@Mx@D2@Box@T@Bix@D2@Mx@D1
+q0x = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+#tangential方向の基準
+Y = D1@My@D2@Boy@T@Biy@D2@My@D1@D1@My@D2@Boy@T@Biy@D2@My@D1
+q0y = 2*Y[0,1]/(Y[1,1]-Y[0,0]+sympy.sqrt((Y[1,1]-Y[0,0])**2+4*Y[0,1]*Y[1,0]))
+
+gx = [i for i in range(1,d1,10)]
+
+
+#場所A
+
+for n in range(1,d1,10):
+    qa = (1*q0x+n)/(0*q0x+1)
+    qa = 1/qa
+    w.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+for n in range(1,d1,10):
+    qa = (1*q0y+n)/(0*q0y+1)
+    qa = 1/qa
+    p.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+    
+#場所B
+
+X = Mx@D1@D1@Mx@D2@Box@T@Bix@D2@Mx@D1@D1@Mx@D2@Box@T@Bix@D2
+q0x = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,d2,5):
+    qa = (1*q0x+n)/(0*q0x+1)
+    qa = 1/qa
+    w.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+
+X = My@D1@D1@My@D2@Boy@T@Biy@D2@My@D1@D1@My@D2@Boy@T@Biy@D2
+q0y = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,d2,5):
+    qa = (1*q0y+n)/(0*q0y+1)
+    qa = 1/qa
+    p.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+
+gx.extend([j for j in range(d1,d1+d2,5)])
+
+#媒質内
+
+X = Bix@D2@Mx@D1@D1@Mx@D2@Box@T@Bix@D2@Mx@D1@D1@Mx@D2@Box@T
+q0x = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,t):
+    qa = (1*q0x+n*teff)/(0*q0x+1)
+    qa = 1/qa
+    w.append(math.sqrt(ramuda/(math.pi*n2*abs(sympy.im(qa)))))
+
+X = Biy@D2@My@D1@D1@My@D2@Boy@T@Biy@D2@My@D1@D1@My@D2@Boy@T
+q0y = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,t):
+    qa = (1*q0y+n*teff)/(0*q0y+1)
+    qa = 1/qa
+    p.append(math.sqrt(ramuda/(math.pi*n2*abs(sympy.im(qa)))))
+
+gx.extend([i for i in range(d1+d2,d1+d2+t-1)])
+
+#場所C
+
+X = Box@T@Bix@D2@Mx@D1@D1@Mx@D2@Box@T@Bix@D2@Mx@D1@D1@Mx@D2
+q0x = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,d2,5):
+    qa = (1*q0x+n)/(0*q0x+1)
+    qa = 1/qa
+    w.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+
+X = Boy@T@Biy@D2@My@D1@D1@My@D2@Boy@T@Biy@D2@My@D1@D1@My@D2
+q0y = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,d2,5):
+    qa = (1*q0y+n)/(0*q0y+1)
+    qa = 1/qa
+    p.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+
+gx.extend([j for j in range(d1+d2+t,d1+d2+t+d2,5)])
+
+#場所D
+
+X = Mx@D2@Box@T@Bix@D2@Mx@D1@D1@Mx@D2@Box@T@Bix@D2@Mx@D1@D1
+q0x = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,d1,10):
+    qa = (1*q0x+n)/(0*q0x+1)
+    qa = 1/qa
+    w.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+
+X = My@D2@Boy@T@Biy@D2@My@D1@D1@My@D2@Boy@T@Biy@D2@My@D1@D1
+q0y = 2*X[0,1]/(X[1,1]-X[0,0]+sympy.sqrt((X[1,1]-X[0,0])**2+4*X[0,1]*X[1,0]))
+for n in range(1,d1,10):
+    qa = (1*q0y+n)/(0*q0y+1)
+    qa = 1/qa
+    p.append(math.sqrt(ramuda/(math.pi*abs(sympy.im(qa)))))
+
+gx.extend([i for i in range(d1+d2+t+d2,d1+d1+d2+t+d2,10)])
+
+plt.plot(gx,w)
+plt.plot(gx,p)
+plt.show()
